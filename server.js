@@ -49,8 +49,7 @@ apiRouter.get("/", (req, res) => {
 });
  
 apiRouter.post("/signup", async (req, res) => {
-  const { email, password, isGoogleUser } = req.body;
- 
+  const { email,name, password, isGoogleUser } = req.body;
   // Check if user already exists using the secondary index
   const existingUser = await dynamoDB
     .query({
@@ -84,6 +83,7 @@ apiRouter.post("/signup", async (req, res) => {
     newUser = {
       userId: uuidv4(),
       email,
+      name,
       password: hashedPassword,
     };
   }
@@ -135,7 +135,7 @@ apiRouter.post("/signin", async (req, res) => {
     { expiresIn: "1h" }
   );
  
-  res.json({ token });
+  res.json({ token,name:foundUser.name });
 });
  
 apiRouter.post("/forget-password", async (req, res) => {

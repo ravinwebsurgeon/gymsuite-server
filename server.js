@@ -11,8 +11,6 @@ const app = express();
 // Allowed origins for CORS
 const allowedOrigins = [
   "http://13.54.66.195",
-  "http://localhost:8091",
-  "http://localhost:3000",
   "https://gymsuite.ai/",
 ];
  

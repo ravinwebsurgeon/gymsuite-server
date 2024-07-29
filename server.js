@@ -11,7 +11,7 @@ const app = express();
 // Allowed origins for CORS
 const allowedOrigins = [
   "http://13.54.66.195",
-  "https://gymsuite.ai/",
+  "https://gymsuite.ai",
 ];
  
 const corsOptions = {

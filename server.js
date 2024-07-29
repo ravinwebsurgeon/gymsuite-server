@@ -118,7 +118,10 @@ apiRouter.post("/signin", async (req, res) => {
   }
  
   const foundUser = user.Items[0];
- 
+ console.log(foundUser,"***************");
+ if(foundUser.isGoogleUser){
+  return res.status(400).json({message:"Your account is connected to Google - use the Google button to login "})
+ }
   // Check password
   const isPasswordValid = await bcrypt.compare(password, foundUser.password);
  

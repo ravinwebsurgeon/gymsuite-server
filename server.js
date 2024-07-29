@@ -230,7 +230,7 @@ apiRouter.post("/reset-password", async (req, res) => {
 // Use the API router with the base path /api/v1
 app.use("/api/v1", apiRouter);
  
-const PORT = process.env.PORT || 8081;
+const PORT = process.env.PORT || 8082;
 app.listen(PORT, () => {
   console.log("Running on port ", PORT);
   console.log("Routes:");

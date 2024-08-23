@@ -10,7 +10,7 @@ const app = express();
  
 // Allowed origins for CORS
 const allowedOrigins = [
-  "http://13.54.66.195",
+  "http://13.54.66.195",  
   "https://gymsuite.ai",
 ];
  
@@ -229,6 +229,33 @@ apiRouter.post("/reset-password", async (req, res) => {
   res.json({ message: "Password reset successfully" });
 });
  
+// Get Dynamo DB (Data Model)
+
+apiRouter.get("/data-model", async (req, res) => {
+  const ID = 1; 
+
+  if (!ID) {
+    return res.status(400).json({ message: "userId is required" });
+  }
+  try {
+    const data = await dynamoDB
+      .query({
+        TableName: 'gymsuite-data-model',
+        KeyConditionExpression: 'ID = :ID',
+        ExpressionAttributeValues: {
+          ':ID': ID
+        }
+      })
+      .promise();
+    if (!data.Items || data.Items.length === 0) {
+      return res.status(400).json({ message: "User not found" });
+    }
+
+    res.json({ data });
+  } catch (error) {    
+    res.status(500).json({ message: "Internal Server Error" });
+  }
+});
 // Use the API router with the base path /api/v1
 app.use("/api/v1", apiRouter);
  

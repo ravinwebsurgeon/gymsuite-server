@@ -232,7 +232,7 @@ apiRouter.post("/reset-password", async (req, res) => {
 
 // Get Dynamo DB (Data Model)
 apiRouter.get("/data-model", async (req, res) => {
-  const ID = 1; 
+  const ID = 1;
 
   if (!ID) {
     return res.status(400).json({ message: "userId is required" });
@@ -240,11 +240,11 @@ apiRouter.get("/data-model", async (req, res) => {
   try {
     const data = await dynamoDB
       .query({
-        TableName: 'gymsuite-data-model',
-        KeyConditionExpression: 'ID = :ID',
+        TableName: "gymsuite-data-model",
+        KeyConditionExpression: "ID = :ID",
         ExpressionAttributeValues: {
-          ':ID': ID
-        }
+          ":ID": ID,
+        },
       })
       .promise();
     if (!data.Items || data.Items.length === 0) {
@@ -252,13 +252,22 @@ apiRouter.get("/data-model", async (req, res) => {
     }
 
     res.json({ data });
-  } catch (error) {    
+  } catch (error) {
     res.status(500).json({ message: "Internal Server Error" });
   }
 });
 
 apiRouter.post("/update-user", async (req, res) => {
-  const { email, clubwise_URL, business_name, logo } = req.body;
+  const {
+    email,
+    clubwise_URL,
+    business_name,
+    logo,
+    First_Name,
+    Last_Name,
+    phone,
+    password,
+  } = req.body;
   try {
     const user = await dynamoDB
       .query({
@@ -271,6 +280,61 @@ apiRouter.post("/update-user", async (req, res) => {
       })
       .promise();
 
+    if (user.Items.length === 0) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const foundUser = user.Items[0];
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const userUpdated = await dynamoDB
+      .update({
+        TableName: TABLE_NAME,
+        Key: { email: email },
+        UpdateExpression:
+          "SET #clubwise_URL = :clubwise_URL, #business_name = :business_name, #logo = :logo, #First_Name = :First_Name, #Last_Name = :Last_Name, #phone = :phone, #password = :password",
+        ExpressionAttributeNames: {
+          "#clubwise_URL": "Clubwise_URL",
+          "#business_name": "Business_name",
+          "#logo": "Logo",
+          "#First_Name": "First_Name",
+          "#Last_Name": "Last_Name",
+          "#phone": "phone",
+          "#password": "password",
+        },
+        ExpressionAttributeValues: {
+          ":clubwise_URL": clubwise_URL,
+          ":business_name": business_name,
+          ":logo": logo,
+          ":First_Name": First_Name,
+          ":Last_Name": Last_Name,
+          ":phone": phone,
+          ":password": hashedPassword,
+        },
+        ReturnValues: "ALL_NEW",
+      })
+      .promise();
+
+    res.status(200).json({ data: userUpdated.Attributes });
+  } catch (error) {
+    console.error("Error updating user:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+apiRouter.post("/settings", async (req, res) => {
+  const { email, CRM_API_Key, CRM_Username, CRM_Password } = req.body;
+  const hashedPassword = await bcrypt.hash(CRM_Password, 10);
+
+  try {
+    const user = await dynamoDB
+      .query({
+        TableName: TABLE_NAME,
+        IndexName: EMAIL_INDEX,
+        KeyConditionExpression: "email = :email",
+        ExpressionAttributeValues: {
+          ":email": email,
+        },
+      })
+      .promise();
 
     if (user.Items.length === 0) {
       return res.status(404).json({ error: "User not found" });
@@ -283,17 +347,17 @@ apiRouter.post("/update-user", async (req, res) => {
         TableName: TABLE_NAME,
         Key: { email: email },
         UpdateExpression:
-          "SET #clubwise_URL = :clubwise_URL, #business_name = :business_name, #logo = :logo",
-          ExpressionAttributeNames: {
-            "#clubwise_URL": "Clubwise_URL",
-            "#business_name": "Business_name",
-            "#logo": "Logo",
-          },
-          ExpressionAttributeValues: {
-            ":clubwise_URL": clubwise_URL,
-            ":business_name": business_name,
-            ":logo": logo,
-          },
+          "SET #CRM_API_Key = :CRM_API_Key, #CRM_Username = :CRM_Username, #CRM_Password = :CRM_Password",
+        ExpressionAttributeNames: {
+          "#CRM_API_Key": "CRM_API_Key",
+          "#CRM_Username": "CRM_Username",
+          "#CRM_Password": "CRM_Password",
+        },
+        ExpressionAttributeValues: {
+          ":CRM_API_Key": CRM_API_Key,
+          ":CRM_Username": CRM_Username,
+          ":CRM_Password": hashedPassword,
+        },
         ReturnValues: "ALL_NEW",
       })
       .promise();
@@ -304,6 +368,7 @@ apiRouter.post("/update-user", async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
+
 apiRouter.post("/user-data", async (req, res) => {
   const { email } = req.body;
   try {

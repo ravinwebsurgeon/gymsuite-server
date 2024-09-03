@@ -12,6 +12,7 @@ const app = express();
 const allowedOrigins = [
   "http://13.54.66.195",
   "http://localhost:3000",
+  "https://www.gymsuite.ai",
   "https://gymsuite.ai",
 ];
 
@@ -40,6 +41,7 @@ const dynamoDB = new AWS.DynamoDB.DocumentClient();
 const TABLE_NAME = process.env.TABLE_NAME;
 const EMAIL_INDEX = process.env.EMAIL_INDEX;
 const JWT_SECRET = process.env.JWT_SECRET;
+const MODAL_TABLE_NAME = process.env.MODAL_TABLE_NAME
 
 // Create a new router for API routes
 const apiRouter = express.Router();
@@ -240,7 +242,7 @@ apiRouter.get("/data-model", async (req, res) => {
   try {
     const data = await dynamoDB
       .query({
-        TableName: "gymsuite-data-model",
+        TableName: MODAL_TABLE_NAME,
         KeyConditionExpression: "ID = :ID",
         ExpressionAttributeValues: {
           ":ID": ID,

@@ -66,7 +66,7 @@ apiRouter.post("/signup", async (req, res) => {
     .promise();
 
   if (existingUser.Items && existingUser.Items.length > 0) {
-    return res.status(400).json({ message: "User already exists" });
+    return res.status(400).json({ message: "User already exists", user:existingUser.Items[0] });
   }
 
   // Create new user

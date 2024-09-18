@@ -42,6 +42,7 @@ const TABLE_NAME = process.env.TABLE_NAME;
 const EMAIL_INDEX = process.env.EMAIL_INDEX;
 const JWT_SECRET = process.env.JWT_SECRET;
 const MODAL_TABLE_NAME = process.env.MODAL_TABLE_NAME;
+const EMAIL_CLUB_INDEX = process.env.EMAIL_CLUB_INDEX;
 
 // Create a new router for API routes
 const apiRouter = express.Router();

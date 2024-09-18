@@ -41,7 +41,7 @@ const dynamoDB = new AWS.DynamoDB.DocumentClient();
 const TABLE_NAME = process.env.TABLE_NAME;
 const EMAIL_INDEX = process.env.EMAIL_INDEX;
 const JWT_SECRET = process.env.JWT_SECRET;
-const MODAL_TABLE_NAME = process.env.MODAL_TABLE_NAME
+const MODAL_TABLE_NAME = process.env.MODAL_TABLE_NAME;
 
 // Create a new router for API routes
 const apiRouter = express.Router();
@@ -66,7 +66,9 @@ apiRouter.post("/signup", async (req, res) => {
     .promise();
 
   if (existingUser.Items && existingUser.Items.length > 0) {
-    return res.status(400).json({ message: "User already exists", user:existingUser.Items[0] });
+    return res
+      .status(400)
+      .json({ message: "User already exists", user: existingUser.Items[0] });
   }
 
   // Create new user
@@ -235,6 +237,8 @@ apiRouter.post("/reset-password", async (req, res) => {
 // Get Dynamo DB (Data Model)
 apiRouter.get("/data-model", async (req, res) => {
   const ID = 1;
+  const { email, Club, Date_Time } = req.query;
+  const dateTime = formatDate(Date_Time);
 
   if (!ID) {
     return res.status(400).json({ message: "userId is required" });
@@ -243,18 +247,30 @@ apiRouter.get("/data-model", async (req, res) => {
     const data = await dynamoDB
       .query({
         TableName: MODAL_TABLE_NAME,
-        KeyConditionExpression: "ID = :ID",
+        IndexName: EMAIL_CLUB_INDEX,
+        KeyConditionExpression: "User_Email = :User_Email AND :Club = Club",
+        FilterExpression: "contains(Date_Time, :monthYear)",
         ExpressionAttributeValues: {
-          ":ID": ID,
+          ":User_Email": email,
+          ":monthYear": dateTime,
+          ":Club": Club,
         },
       })
       .promise();
+    const sortedDataDesc = data?.Items.sort((a, b) => {
+      const dateA = new Date(a.Date_Time.split("/").reverse().join(" "));
+      const dateB = new Date(b.Date_Time.split("/").reverse().join(" "));
+      return dateB - dateA;
+    });
+
     if (!data.Items || data.Items.length === 0) {
-      return res.status(400).json({ message: "User not found" });
+      return res.status(400).json({ message: "Values Not Found" });
     }
 
-    res.json({ data });
+    res.json({ data: sortedDataDesc[0] });
   } catch (error) {
+    console.log(error);
+
     res.status(500).json({ message: "Internal Server Error" });
   }
 });
@@ -322,6 +338,107 @@ apiRouter.post("/update-user", async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
+
+apiRouter.post("/sources", async (req, res) => {
+  const { sources, ID } = req.body;
+  try {
+    const userUpdated = await dynamoDB
+      .update({
+        TableName: MODAL_TABLE_NAME,
+        Key: { ID: ID },
+        UpdateExpression: "SET #Top_3_Lead_Sources = :Top_3_Lead_Sources",
+        ExpressionAttributeNames: {
+          "#Top_3_Lead_Sources": "Top_3_Lead_Sources",
+        },
+        ExpressionAttributeValues: {
+          ":Top_3_Lead_Sources": sources,
+        },
+        ReturnValues: "ALL_NEW",
+      })
+      .promise();
+
+    res.status(200).json({ data: userUpdated.Attributes });
+  } catch (error) {
+    console.error("Error updating user:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+apiRouter.post("/strategic-focus", async (req, res) => {
+  const { data, ID } = req.body;
+  try {
+    const userUpdated = await dynamoDB
+      .update({
+        TableName: MODAL_TABLE_NAME,
+        Key: { ID: ID },
+        UpdateExpression: "SET #Top_3_Strategic_Focus = :Top_3_Strategic_Focus",
+        ExpressionAttributeNames: {
+          "#Top_3_Strategic_Focus": "Top_3_Strategic_Focus",
+        },
+        ExpressionAttributeValues: {
+          ":Top_3_Strategic_Focus": data,
+        },
+        ReturnValues: "ALL_NEW",
+      })
+      .promise();
+
+    res.status(200).json({ data: userUpdated.Attributes });
+  } catch (error) {
+    console.error("Error updating user:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+apiRouter.post("/objections", async (req, res) => {
+  const { data, ID } = req.body;
+  try {
+    const userUpdated = await dynamoDB
+      .update({
+        TableName: MODAL_TABLE_NAME,
+        Key: { ID: ID },
+        UpdateExpression: "SET #Top_3_Objections = :Top_3_Objections",
+        ExpressionAttributeNames: {
+          "#Top_3_Objections": "Top_3_Objections",
+        },
+        ExpressionAttributeValues: {
+          ":Top_3_Objections": data,
+        },
+        ReturnValues: "ALL_NEW",
+      })
+      .promise();
+
+    res.status(200).json({ data: userUpdated.Attributes });
+  } catch (error) {
+    console.error("Error updating user:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+apiRouter.post("/complaints", async (req, res) => {
+  const { data, ID } = req.body;
+  try {
+    const userUpdated = await dynamoDB
+      .update({
+        TableName: MODAL_TABLE_NAME,
+        Key: { ID: ID },
+        UpdateExpression: "SET #Top_3_Complaints = :Top_3_Complaints",
+        ExpressionAttributeNames: {
+          "#Top_3_Complaints": "Top_3_Complaints",
+        },
+        ExpressionAttributeValues: {
+          ":Top_3_Complaints": data,
+        },
+        ReturnValues: "ALL_NEW",
+      })
+      .promise();
+
+    res.status(200).json({ data: userUpdated.Attributes });
+  } catch (error) {
+    console.error("Error updating user:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
 apiRouter.post("/settings", async (req, res) => {
   const { email, CRM_API_Key, CRM_Username, CRM_Password } = req.body;
   const hashedPassword = await bcrypt.hash(CRM_Password, 10);
@@ -390,6 +507,44 @@ apiRouter.post("/user-data", async (req, res) => {
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
+
+apiRouter.get("/get-clubs", async (req, res) => {
+  const { email } = req.query;
+  try {
+    const rows = await dynamoDB
+      .query({
+        TableName: MODAL_TABLE_NAME,
+        IndexName: EMAIL_INDEX,
+        KeyConditionExpression: "User_Email = :User_Email",
+        ExpressionAttributeValues: {
+          ":User_Email": email,
+        },
+      })
+      .promise();
+    const user = await dynamoDB
+      .query({
+        TableName: TABLE_NAME,
+        IndexName: EMAIL_INDEX,
+        KeyConditionExpression: "email = :email",
+        ExpressionAttributeValues: {
+          ":email": email,
+        },
+      })
+      .promise();
+    const clubs = [];
+    rows.Items.map((item) => {
+      if (!clubs.some((club) => club.label === item.Club)) {
+        clubs.push({ label: item.Club, value: item.Club });
+      }
+    });
+
+    res.status(200).json({ clubs: clubs, user: user });
+  } catch (error) {
+    console.error("Error fetching clubs:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
 // Use the API router with the base path /api/v1
 app.use("/api/v1", apiRouter);
 
@@ -405,3 +560,13 @@ app.listen(PORT, () => {
     }
   });
 });
+
+const formatDate = (dateString) => {
+  const date = new Date(dateString);
+
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const year = date.getFullYear();
+
+  return `${month}/${year}`;
+};

@@ -4,6 +4,7 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { v4: uuidv4 } = require("uuid");
 const cors = require("cors");
+const { json } = require("body-parser");
 require("dotenv").config();
 
 const app = express();
@@ -342,17 +343,22 @@ apiRouter.post("/update-user", async (req, res) => {
 
 apiRouter.post("/sources", async (req, res) => {
   const { sources, ID } = req.body;
+  const json = JSON.parse(sources);
   try {
     const userUpdated = await dynamoDB
       .update({
         TableName: MODAL_TABLE_NAME,
         Key: { ID: ID },
-        UpdateExpression: "SET #Top_3_Lead_Sources = :Top_3_Lead_Sources",
+        UpdateExpression: "SET #ls1 = :ls1,  #ls2 = :ls2,  #ls3 = :ls3",
         ExpressionAttributeNames: {
-          "#Top_3_Lead_Sources": "Top_3_Lead_Sources",
+          "#ls1": "LEAD SOURCES 1",
+          "#ls2": "LEAD SOURCES 2",
+          "#ls3": "LEAD SOURCES 3",
         },
         ExpressionAttributeValues: {
-          ":Top_3_Lead_Sources": sources,
+          ":ls1": json.first,
+          ":ls2": json.second,
+          ":ls3": json.third,
         },
         ReturnValues: "ALL_NEW",
       })
@@ -367,17 +373,22 @@ apiRouter.post("/sources", async (req, res) => {
 
 apiRouter.post("/strategic-focus", async (req, res) => {
   const { data, ID } = req.body;
+  const json = JSON.parse(data);
   try {
     const userUpdated = await dynamoDB
       .update({
         TableName: MODAL_TABLE_NAME,
         Key: { ID: ID },
-        UpdateExpression: "SET #Top_3_Strategic_Focus = :Top_3_Strategic_Focus",
+        UpdateExpression: "SET #ls1 = :ls1,  #ls2 = :ls2,  #ls3 = :ls3",
         ExpressionAttributeNames: {
-          "#Top_3_Strategic_Focus": "Top_3_Strategic_Focus",
+          "#ls1": "STRATEGIC FOCUS 1",
+          "#ls2": "STRATEGIC FOCUS 2",
+          "#ls3": "STRATEGIC FOCUS 3",
         },
         ExpressionAttributeValues: {
-          ":Top_3_Strategic_Focus": data,
+          ":ls1": json.first,
+          ":ls2": json.second,
+          ":ls3": json.third,
         },
         ReturnValues: "ALL_NEW",
       })
@@ -392,17 +403,22 @@ apiRouter.post("/strategic-focus", async (req, res) => {
 
 apiRouter.post("/objections", async (req, res) => {
   const { data, ID } = req.body;
+  const json = JSON.parse(data);
   try {
     const userUpdated = await dynamoDB
       .update({
         TableName: MODAL_TABLE_NAME,
         Key: { ID: ID },
-        UpdateExpression: "SET #Top_3_Objections = :Top_3_Objections",
+        UpdateExpression: "SET #ls1 = :ls1,  #ls2 = :ls2,  #ls3 = :ls3",
         ExpressionAttributeNames: {
-          "#Top_3_Objections": "Top_3_Objections",
+          "#ls1": "OBJECTIONS 1",
+          "#ls2": "OBJECTIONS 2",
+          "#ls3": "OBJECTIONS 3",
         },
         ExpressionAttributeValues: {
-          ":Top_3_Objections": data,
+          ":ls1": json.objection1,
+          ":ls2": json.objection2,
+          ":ls3": json.objection3,
         },
         ReturnValues: "ALL_NEW",
       })
@@ -417,17 +433,22 @@ apiRouter.post("/objections", async (req, res) => {
 
 apiRouter.post("/complaints", async (req, res) => {
   const { data, ID } = req.body;
+  const json = JSON.parse(data);
   try {
     const userUpdated = await dynamoDB
       .update({
         TableName: MODAL_TABLE_NAME,
         Key: { ID: ID },
-        UpdateExpression: "SET #Top_3_Complaints = :Top_3_Complaints",
+        UpdateExpression: "SET #ls1 = :ls1,  #ls2 = :ls2,  #ls3 = :ls3",
         ExpressionAttributeNames: {
-          "#Top_3_Complaints": "Top_3_Complaints",
+          "#ls1": "COMPLAINTS 1",
+          "#ls2": "COMPLAINTS 2",
+          "#ls3": "COMPLAINTS 3",
         },
         ExpressionAttributeValues: {
-          ":Top_3_Complaints": data,
+          ":ls1": json.complaint1,
+          ":ls2": json.complaint2,
+          ":ls3": json.complaint3,
         },
         ReturnValues: "ALL_NEW",
       })
@@ -546,6 +567,72 @@ apiRouter.get("/get-clubs", async (req, res) => {
   }
 });
 
+apiRouter.post("/update-data", async (req, res) => {
+  let { data, email } = req.body;
+  try { 
+  const existingUser = await dynamoDB
+    .query({
+      TableName: TABLE_NAME,
+      IndexName: EMAIL_INDEX,
+      KeyConditionExpression: "email = :email",
+      ExpressionAttributeValues: {
+        ":email": email,
+      },
+    })
+    .promise();
+  if (existingUser.Items && existingUser.Items.length > 0) {
+    const getLatest = await dynamoDB
+      .scan({
+        TableName: MODAL_TABLE_NAME,
+      })
+      .promise();
+    data.ID = getLatest.ScannedCount + 3;
+    const addingItem = await dynamoDB
+      .put({
+        TableName: MODAL_TABLE_NAME,
+        Item: data,
+      })
+      .promise();
+    const getRow = await dynamoDB
+      .query({
+        TableName: MODAL_TABLE_NAME,
+        KeyConditionExpression: "ID = :ID",
+        ExpressionAttributeValues: {
+          ":ID": data.ID,
+        },
+      })
+      .promise();
+
+    res.status(200).json({ data: getRow?.Items[0] });    
+  } else {
+    res.status(500).json({ error: "Your don't have permissions" });
+  }
+} catch (error) {
+  console.error("Error fetching clubs:", error);
+  res.status(500).json({ error: "Internal Server Error" });
+}
+});
+
+
+apiRouter.post("/prev-data", async (req, res) => {
+  let { ID } = req.body;
+  try {
+    const items = await dynamoDB
+      .query({
+        TableName: MODAL_TABLE_NAME,
+        KeyConditionExpression: "ID = :ID",
+        ExpressionAttributeValues: {
+          ":ID": ID,
+        },
+      })
+      .promise();
+
+    res.status(200).json({ data: items?.Items[0] });    
+  } catch (error) {
+    console.error("Error fetching clubs:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
 // Use the API router with the base path /api/v1
 app.use("/api/v1", apiRouter);
 

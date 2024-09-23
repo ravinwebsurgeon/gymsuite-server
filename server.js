@@ -47,7 +47,18 @@ const EMAIL_CLUB_INDEX = process.env.EMAIL_CLUB_INDEX;
 
 // Create a new router for API routes
 const apiRouter = express.Router();
-
+const emails = [
+  "gymsuiteai@gmail.com",
+  "afmanagement001@gmail.com",
+  "afmanagement002@gmail.com",
+  "anytimefitnesscoffs@gmail.com",
+  "anytimefitnesstoormina@gmail.com",
+  "afballina@gmail.com",
+  "afnambucca@gmail.com",
+  "afcurrumbin@gmail.com",
+  "afwoolgoolga@gmail.com",
+  "anytimealbanycreek@gmail.com",
+];
 // Define the routes using the router
 apiRouter.get("/", (req, res) => {
   res.json({ message: "Testing Work" });
@@ -241,35 +252,60 @@ apiRouter.get("/data-model", async (req, res) => {
   const ID = 1;
   const { email, Club, Date_Time } = req.query;
   const dateTime = formatDate(Date_Time);
-
   if (!ID) {
     return res.status(400).json({ message: "userId is required" });
   }
   try {
-    const data = await dynamoDB
-      .query({
-        TableName: MODAL_TABLE_NAME,
-        IndexName: EMAIL_CLUB_INDEX,
-        KeyConditionExpression: "User_Email = :User_Email AND :Club = Club",
-        FilterExpression: "contains(Date_Time, :monthYear)",
-        ExpressionAttributeValues: {
-          ":User_Email": email,
-          ":monthYear": dateTime,
-          ":Club": Club,
-        },
-      })
-      .promise();
-    const sortedDataDesc = data?.Items.sort((a, b) => {
-      const dateA = new Date(a.Date_Time.split("/").reverse().join(" "));
-      const dateB = new Date(b.Date_Time.split("/").reverse().join(" "));
-      return dateB - dateA;
-    });
+    if (emails.includes(email)) {
+      const data = await dynamoDB
+        .query({
+          TableName: MODAL_TABLE_NAME,
+          IndexName: "club-index",
+          KeyConditionExpression: ":Club = Club",
+          FilterExpression: "contains(Date_Time, :monthYear)",
+          ExpressionAttributeValues: {
+            ":monthYear": dateTime,
+            ":Club": Club,
+          },
+        })
+        .promise();
+      const sortedDataDesc = data?.Items.sort((a, b) => {
+        const dateA = new Date(a.Date_Time.split("/").reverse().join(" "));
+        const dateB = new Date(b.Date_Time.split("/").reverse().join(" "));
+        return dateB - dateA;
+      });
 
-    if (!data.Items || data.Items.length === 0) {
-      return res.status(400).json({ message: "Values Not Found" });
+      if (!data.Items || data.Items.length === 0) {
+        return res.status(400).json({ message: "Values Not Found" });
+      }
+
+      res.json({ data: sortedDataDesc[0] });
+    } else {
+      const data = await dynamoDB
+        .query({
+          TableName: MODAL_TABLE_NAME,
+          IndexName: EMAIL_CLUB_INDEX,
+          KeyConditionExpression: "User_Email = :User_Email AND :Club = Club",
+          FilterExpression: "contains(Date_Time, :monthYear)",
+          ExpressionAttributeValues: {
+            ":User_Email": email,
+            ":monthYear": dateTime,
+            ":Club": Club,
+          },
+        })
+        .promise();
+      const sortedDataDesc = data?.Items.sort((a, b) => {
+        const dateA = new Date(a.Date_Time.split("/").reverse().join(" "));
+        const dateB = new Date(b.Date_Time.split("/").reverse().join(" "));
+        return dateB - dateA;
+      });
+
+      if (!data.Items || data.Items.length === 0) {
+        return res.status(400).json({ message: "Values Not Found" });
+      }
+
+      res.json({ data: sortedDataDesc[0] });
     }
-
-    res.json({ data: sortedDataDesc[0] });
   } catch (error) {
     console.log(error);
 
@@ -533,17 +569,94 @@ apiRouter.post("/user-data", async (req, res) => {
 apiRouter.get("/get-clubs", async (req, res) => {
   const { email } = req.query;
   try {
-    const rows = await dynamoDB
-      .query({
-        TableName: MODAL_TABLE_NAME,
-        IndexName: EMAIL_INDEX,
-        KeyConditionExpression: "User_Email = :User_Email",
-        ExpressionAttributeValues: {
-          ":User_Email": email,
-        },
-      })
-      .promise();
-    const user = await dynamoDB
+    if (emails.includes(email)) {
+    
+        const allClubs = await dynamoDB
+        .scan({
+          TableName: MODAL_TABLE_NAME,
+        })
+        .promise();
+        const user = await dynamoDB
+        .query({
+          TableName: TABLE_NAME,
+          IndexName: EMAIL_INDEX,
+          KeyConditionExpression: "email = :email",
+          ExpressionAttributeValues: {
+            ":email": email,
+          },
+        })
+        .promise();
+        const clubs = [];
+        allClubs.Items.map((item) => {
+          if (!clubs.some((club) => club.label === item.Club)) {
+            clubs.push({ label: item.Club, value: item.Club });
+          }
+        });
+        
+        if(email === 'gymsuiteai@gmail.com'){
+        res.status(200).json({ clubs: clubs, user: user });
+      }
+      if(email === 'anytimefitnesscoffs@gmail.com'){
+        res.status(200).json({ clubs: [{label:"Anytime Fitness Coffs Harbour",value:"Anytime Fitness Coffs Harbour"}], user: user });
+      }
+      if(email === 'anytimefitnesstoormina@gmail.com'){
+        res.status(200).json({ clubs: [{label:"Anytime Fitness Toormina",value:"Anytime Fitness Toormina"}], user: user });
+      }
+      if(email === 'afballina@gmail.com'){
+        res.status(200).json({ clubs: [{label:"Anytime Fitness Ballina",value:"Anytime Fitness Ballina"}], user: user });
+      }
+      if(email === 'afnambucca@gmail.com'){
+        res.status(200).json({ clubs: [{label:"Anytime Fitness Nambucca Heads",value:"Anytime Fitness Nambucca Heads"}], user: user });
+      }
+      if(email === 'afcurrumbin@gmail.com'){
+        res.status(200).json({ clubs: [{label:"Anytime Fitness Currumbin",value:"Anytime Fitness Currumbin"}], user: user });
+      }
+      if(email === 'afwoolgoolga@gmail.com'){
+        res.status(200).json({ clubs: [{label:"Anytime Fitness Woolgoolga",value:"Anytime Fitness Woolgoolga"}], user: user });
+      }
+      if(email === 'anytimealbanycreek@gmail.com'){
+        res.status(200).json({ clubs: [{label:"Anytime Fitness Albany Creek",value:"Anytime Fitness Albany Creek"}], user: user });
+      }
+    } else {
+      const rows = await dynamoDB
+        .query({
+          TableName: MODAL_TABLE_NAME,
+          IndexName: EMAIL_INDEX,
+          KeyConditionExpression: "User_Email = :User_Email",
+          ExpressionAttributeValues: {
+            ":User_Email": email,
+          },
+        })
+        .promise();
+      const user = await dynamoDB
+        .query({
+          TableName: TABLE_NAME,
+          IndexName: EMAIL_INDEX,
+          KeyConditionExpression: "email = :email",
+          ExpressionAttributeValues: {
+            ":email": email,
+          },
+        })
+        .promise();
+      const clubs = [];
+      rows.Items.map((item) => {
+        if (!clubs.some((club) => club.label === item.Club)) {
+          clubs.push({ label: item.Club, value: item.Club });
+        }
+      });
+
+      res.status(200).json({ clubs: clubs, user: user });
+    }
+  } catch (error) {
+    console.error("Error fetching clubs:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+apiRouter.post("/update-data", async (req, res) => {
+  let { data, email } = req.body;
+  try {
+    const existingUser = await dynamoDB
       .query({
         TableName: TABLE_NAME,
         IndexName: EMAIL_INDEX,
@@ -553,66 +666,38 @@ apiRouter.get("/get-clubs", async (req, res) => {
         },
       })
       .promise();
-    const clubs = [];
-    rows.Items.map((item) => {
-      if (!clubs.some((club) => club.label === item.Club)) {
-        clubs.push({ label: item.Club, value: item.Club });
-      }
-    });
+    if (existingUser.Items && existingUser.Items.length > 0) {
+      const getLatest = await dynamoDB
+        .scan({
+          TableName: MODAL_TABLE_NAME,
+        })
+        .promise();
+      data.ID = getLatest.ScannedCount + 3;
+      const addingItem = await dynamoDB
+        .put({
+          TableName: MODAL_TABLE_NAME,
+          Item: data,
+        })
+        .promise();
+      const getRow = await dynamoDB
+        .query({
+          TableName: MODAL_TABLE_NAME,
+          KeyConditionExpression: "ID = :ID",
+          ExpressionAttributeValues: {
+            ":ID": data.ID,
+          },
+        })
+        .promise();
 
-    res.status(200).json({ clubs: clubs, user: user });
+      res.status(200).json({ data: getRow?.Items[0] });
+    } else {
+      res.status(500).json({ error: "Your don't have permissions" });
+    }
   } catch (error) {
     console.error("Error fetching clubs:", error);
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
-
-apiRouter.post("/update-data", async (req, res) => {
-  let { data, email } = req.body;
-  try { 
-  const existingUser = await dynamoDB
-    .query({
-      TableName: TABLE_NAME,
-      IndexName: EMAIL_INDEX,
-      KeyConditionExpression: "email = :email",
-      ExpressionAttributeValues: {
-        ":email": email,
-      },
-    })
-    .promise();
-  if (existingUser.Items && existingUser.Items.length > 0) {
-    const getLatest = await dynamoDB
-      .scan({
-        TableName: MODAL_TABLE_NAME,
-      })
-      .promise();
-    data.ID = getLatest.ScannedCount + 3;
-    const addingItem = await dynamoDB
-      .put({
-        TableName: MODAL_TABLE_NAME,
-        Item: data,
-      })
-      .promise();
-    const getRow = await dynamoDB
-      .query({
-        TableName: MODAL_TABLE_NAME,
-        KeyConditionExpression: "ID = :ID",
-        ExpressionAttributeValues: {
-          ":ID": data.ID,
-        },
-      })
-      .promise();
-
-    res.status(200).json({ data: getRow?.Items[0] });    
-  } else {
-    res.status(500).json({ error: "Your don't have permissions" });
-  }
-} catch (error) {
-  console.error("Error fetching clubs:", error);
-  res.status(500).json({ error: "Internal Server Error" });
-}
-});
-
 
 apiRouter.post("/prev-data", async (req, res) => {
   let { ID } = req.body;
@@ -627,7 +712,7 @@ apiRouter.post("/prev-data", async (req, res) => {
       })
       .promise();
 
-    res.status(200).json({ data: items?.Items[0] });    
+    res.status(200).json({ data: items?.Items[0] });
   } catch (error) {
     console.error("Error fetching clubs:", error);
     res.status(500).json({ error: "Internal Server Error" });

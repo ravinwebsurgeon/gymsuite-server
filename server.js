@@ -1,5 +1,7 @@
 const express = require("express");
 const AWS = require("aws-sdk");
+const multer = require('multer');
+const fs = require('fs');
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { v4: uuidv4 } = require("uuid");
@@ -38,12 +40,15 @@ AWS.config.update({
   secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
 });
 
+const s3 = new AWS.S3();
+
 const dynamoDB = new AWS.DynamoDB.DocumentClient();
 const TABLE_NAME = process.env.TABLE_NAME;
 const EMAIL_INDEX = process.env.EMAIL_INDEX;
 const JWT_SECRET = process.env.JWT_SECRET;
 const MODAL_TABLE_NAME = process.env.MODAL_TABLE_NAME;
 const EMAIL_CLUB_INDEX = process.env.EMAIL_CLUB_INDEX;
+const LOGO_BUCKET_NAME = process.env.LOGO_BUCKET_NAME;
 
 // Create a new router for API routes
 const apiRouter = express.Router();
@@ -59,6 +64,172 @@ const emails = [
   "afwoolgoolga@gmail.com",
   "anytimealbanycreek@gmail.com",
 ];
+const upload = multer({ dest: 'uploads/' });
+
+const uploadImage = (filePath, fileName) => {
+  const params = {
+    Bucket: LOGO_BUCKET_NAME,
+    Key: `images/${Date.now()}-${fileName}`,
+    Body: fs.createReadStream(filePath), 
+    ContentType: 'image/png', 
+  };
+  return s3.upload(params).promise();
+};
+apiRouter.post("/update-user", upload.single('logo'), async (req, res) => {
+  const {
+    email,
+    clubwise_URL,
+    business_name,
+    First_Name,
+    Last_Name,
+    phone,
+    password,
+  } = req.body;
+  try {
+    const filePath = req.file.path; 
+    const fileName = req.file.originalname; 
+
+    // Upload image to S3
+    const data = await uploadImage(filePath, fileName);
+    fs.unlinkSync(filePath);
+if(data?.Location){
+  try {
+    const user = await dynamoDB
+      .query({
+        TableName: TABLE_NAME,
+        IndexName: EMAIL_INDEX,
+        KeyConditionExpression: "email = :email",
+        ExpressionAttributeValues: {
+          ":email": email,
+        },
+      })
+      .promise();
+
+    if (user.Items.length === 0) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    const foundUser = user.Items[0];
+    const hashedPassword = await bcrypt.hash(password, 10);
+    
+    const userUpdated = await dynamoDB
+      .update({
+        TableName: TABLE_NAME,
+        Key: { email: email },
+        UpdateExpression:
+          "SET #clubwise_URL = :clubwise_URL, #name = :name, #business_name = :business_name, #logo = :logo, #First_Name = :First_Name, #Last_Name = :Last_Name, #phone = :phone, #password = :password",
+        ExpressionAttributeNames: {
+          "#clubwise_URL": "Clubwise_URL",
+          "#business_name": "Business_name",
+          "#name" : "name",
+          "#logo": "Logo",
+          "#First_Name": "First_Name",
+          "#Last_Name": "Last_Name",
+          "#phone": "phone",
+          "#password": "password",
+        },
+        ExpressionAttributeValues: {
+          ":clubwise_URL": clubwise_URL,
+          ":business_name": business_name,
+          ":name" : First_Name + " " + Last_Name,
+          ":logo": data?.Location,
+          ":First_Name": First_Name,
+          ":Last_Name": Last_Name,
+          ":phone": phone,
+          ":password": hashedPassword,
+        },
+        ReturnValues: "ALL_NEW",
+      })
+      .promise();
+
+    res.status(200).json({ data: userUpdated.Attributes });
+  }
+   catch (error) {
+    console.error("Error updating user:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+}
+
+  } catch (err) {
+    console.error("Error uploading file:", err);
+    res.status(500).json({ error: 'Error uploading file', details: err });
+  }
+});
+
+apiRouter.post("/update-user", upload.single('image'), async (req, res) => {
+  const {
+    email,
+    clubwise_URL,
+    business_name,
+    First_Name,
+    Last_Name,
+    phone,
+    password,
+  } = req.body;
+  try {
+    const fileContent = fs.readFileSync(req.file.path);
+    uploadImage(fileContent, 'your_bucket_name', `images/${req.file.originalname}`)
+    .then(data => {
+      fs.unlinkSync(req.file.path); // Optional: delete file from local storage after upload
+      res.json({ message: 'File uploaded successfully!', data });
+    })
+    .catch(err => {
+      res.status(500).json({ error: 'Error uploading file', details: err });
+    });
+
+
+    // const user = await dynamoDB
+    //   .query({
+    //     TableName: TABLE_NAME,
+    //     IndexName: EMAIL_INDEX,
+    //     KeyConditionExpression: "email = :email",
+    //     ExpressionAttributeValues: {
+    //       ":email": email,
+    //     },
+    //   })
+    //   .promise();
+
+    // if (user.Items.length === 0) {
+    //   return res.status(404).json({ error: "User not found" });
+    // }
+    // const foundUser = user.Items[0];
+    // const hashedPassword = await bcrypt.hash(password, 10);
+    
+    // const userUpdated = await dynamoDB
+    //   .update({
+    //     TableName: TABLE_NAME,
+    //     Key: { email: email },
+    //     UpdateExpression:
+    //       "SET #clubwise_URL = :clubwise_URL, #business_name = :business_name, #logo = :logo, #First_Name = :First_Name, #Last_Name = :Last_Name, #phone = :phone, #password = :password",
+    //     ExpressionAttributeNames: {
+    //       "#clubwise_URL": "Clubwise_URL",
+    //       "#business_name": "Business_name",
+    //       "#logo": "Logo",
+    //       "#First_Name": "First_Name",
+    //       "#Last_Name": "Last_Name",
+    //       "#phone": "phone",
+    //       "#password": "password",
+    //     },
+    //     ExpressionAttributeValues: {
+    //       ":clubwise_URL": clubwise_URL,
+    //       ":business_name": business_name,
+    //       ":logo": logo,
+    //       ":First_Name": First_Name,
+    //       ":Last_Name": Last_Name,
+    //       ":phone": phone,
+    //       ":password": hashedPassword,
+    //     },
+    //     ReturnValues: "ALL_NEW",
+    //   })
+    //   .promise();
+
+    // res.status(200).json({ data: userUpdated.Attributes });
+  }
+   catch (error) {
+    console.error("Error updating user:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
 // Define the routes using the router
 apiRouter.get("/", (req, res) => {
   res.json({ message: "Testing Work" });
@@ -313,69 +484,6 @@ apiRouter.get("/data-model", async (req, res) => {
   }
 });
 
-apiRouter.post("/update-user", async (req, res) => {
-  const {
-    email,
-    clubwise_URL,
-    business_name,
-    logo,
-    First_Name,
-    Last_Name,
-    phone,
-    password,
-  } = req.body;
-  try {
-    const user = await dynamoDB
-      .query({
-        TableName: TABLE_NAME,
-        IndexName: EMAIL_INDEX,
-        KeyConditionExpression: "email = :email",
-        ExpressionAttributeValues: {
-          ":email": email,
-        },
-      })
-      .promise();
-
-    if (user.Items.length === 0) {
-      return res.status(404).json({ error: "User not found" });
-    }
-
-    const foundUser = user.Items[0];
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const userUpdated = await dynamoDB
-      .update({
-        TableName: TABLE_NAME,
-        Key: { email: email },
-        UpdateExpression:
-          "SET #clubwise_URL = :clubwise_URL, #business_name = :business_name, #logo = :logo, #First_Name = :First_Name, #Last_Name = :Last_Name, #phone = :phone, #password = :password",
-        ExpressionAttributeNames: {
-          "#clubwise_URL": "Clubwise_URL",
-          "#business_name": "Business_name",
-          "#logo": "Logo",
-          "#First_Name": "First_Name",
-          "#Last_Name": "Last_Name",
-          "#phone": "phone",
-          "#password": "password",
-        },
-        ExpressionAttributeValues: {
-          ":clubwise_URL": clubwise_URL,
-          ":business_name": business_name,
-          ":logo": logo,
-          ":First_Name": First_Name,
-          ":Last_Name": Last_Name,
-          ":phone": phone,
-          ":password": hashedPassword,
-        },
-        ReturnValues: "ALL_NEW",
-      })
-      .promise();
-
-    res.status(200).json({ data: userUpdated.Attributes });
-  } catch (error) {
-    console.error("Error updating user:", error);
-    res.status(500).json({ error: "Internal Server Error" });
-  }
-});
 
 apiRouter.post("/sources", async (req, res) => {
   const { sources, ID } = req.body;
@@ -533,7 +641,7 @@ apiRouter.post("/settings", async (req, res) => {
         ExpressionAttributeValues: {
           ":CRM_API_Key": CRM_API_Key,
           ":CRM_Username": CRM_Username,
-          ":CRM_Password": hashedPassword,
+          ":CRM_Password": CRM_Password,
         },
         ReturnValues: "ALL_NEW",
       })
@@ -588,10 +696,11 @@ apiRouter.get("/get-clubs", async (req, res) => {
         .promise();
         const clubs = [];
         allClubs.Items.map((item) => {
-          if (!clubs.some((club) => club.label === item.Club)) {
+          if (!clubs.some((club) => club.label === item.Club) && item.Club != '') {
             clubs.push({ label: item.Club, value: item.Club });
           }
         });
+        console.log(clubs);
         
         if(email === 'gymsuiteai@gmail.com'){
         res.status(200).json({ clubs: clubs, user: user });

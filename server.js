@@ -693,14 +693,14 @@ apiRouter.get("/get-clubs", async (req, res) => {
             ":email": email,
           },
         })
-        .promise();
+        .promise();       
         const clubs = [];
         allClubs.Items.map((item) => {
           if (!clubs.some((club) => club.label === item.Club) && item.Club != '') {
             clubs.push({ label: item.Club, value: item.Club });
           }
         });
-        console.log(clubs);
+        
         
         if(email === 'gymsuiteai@gmail.com'){
         res.status(200).json({ clubs: clubs, user: user });
@@ -724,6 +724,12 @@ apiRouter.get("/get-clubs", async (req, res) => {
         res.status(200).json({ clubs: [{label:"Anytime Fitness Woolgoolga",value:"Anytime Fitness Woolgoolga"}], user: user });
       }
       if(email === 'anytimealbanycreek@gmail.com'){
+        res.status(200).json({ clubs: [{label:"Anytime Fitness Albany Creek",value:"Anytime Fitness Albany Creek"}], user: user });
+      }
+      if(email === 'afmanagement001@gmail.com'){
+        res.status(200).json({ clubs: [{label:"Anytime Fitness Albany Creek",value:"Anytime Fitness Albany Creek"}], user: user });
+      }
+      if(email === 'afmanagement002@gmail.com'){
         res.status(200).json({ clubs: [{label:"Anytime Fitness Albany Creek",value:"Anytime Fitness Albany Creek"}], user: user });
       }
     } else {

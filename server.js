@@ -702,7 +702,7 @@ apiRouter.get("/get-clubs", async (req, res) => {
         });
         
         
-        if(email === 'gymsuiteai@gmail.com'){
+        if(email === 'gymsuiteai@gmail.com' || email === 'afmanagement001@gmail.com' || email === 'afmanagement002@gmail.com'){
         res.status(200).json({ clubs: clubs, user: user });
       }
       if(email === 'anytimefitnesscoffs@gmail.com'){
@@ -725,13 +725,7 @@ apiRouter.get("/get-clubs", async (req, res) => {
       }
       if(email === 'anytimealbanycreek@gmail.com'){
         res.status(200).json({ clubs: [{label:"Anytime Fitness Albany Creek",value:"Anytime Fitness Albany Creek"}], user: user });
-      }
-      if(email === 'afmanagement001@gmail.com'){
-        res.status(200).json({ clubs: [{label:"Anytime Fitness Albany Creek",value:"Anytime Fitness Albany Creek"}], user: user });
-      }
-      if(email === 'afmanagement002@gmail.com'){
-        res.status(200).json({ clubs: [{label:"Anytime Fitness Albany Creek",value:"Anytime Fitness Albany Creek"}], user: user });
-      }
+      }   
     } else {
       const rows = await dynamoDB
         .query({
